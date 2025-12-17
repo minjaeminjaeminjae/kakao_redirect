@@ -1,11 +1,9 @@
-
 <!DOCTYPE html>
 <html>
   <head>
     <title>Redirecting to Kakao...</title>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Google Analytics -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-CXX7D36FTW"></script>
     <script>
       window.dataLayer = window.dataLayer || [];
@@ -18,9 +16,12 @@
     <p>SAT 전문가를 만나러 가는 중입니다...</p>
     <script>
       const params = new URLSearchParams(window.location.search);
-      const src = params.get('src') || '';
+      const src = params.get('src') || 'unknown'; // src가 없으면 unknown으로 처리
 
-      // 오픈카톡 링크 매핑: 작성자별 고정 링크
+      // 2단계에서 만든 구글 앱스 스크립트 배포 URL을 여기에 넣으세요
+      const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/XXXXX-YYYYY-ZZZZZ/exec";
+
+      // 오픈카톡 링크 매핑
       const kakaoLinks = {
         writerM: "https://open.kakao.com/o/sLyyN9Lg",
         writerB: "https://open.kakao.com/o/sjYJo9bh",
@@ -33,22 +34,13 @@
 
       let kakaoLink = "https://open.kakao.com/o/defaultLink";
 
-      // src 파라미터 안에 작성자명이 포함되어 있으면 해당 링크로 설정
-      if (src.includes("writerM")) {
-        kakaoLink = kakaoLinks.writerM;
-      } else if (src.includes("writerB")) {
-        kakaoLink = kakaoLinks.writerB;
-      } else if (src.includes("summer")) {
-        kakaoLink = kakaoLinks.summer;
-      } else if (src.includes("landing")) {
-        kakaoLink = kakaoLinks.landing;
-      } else if (src.includes("instagram")) {
-        kakaoLink = kakaoLinks.instagram;   
-      } else if (src.includes("writerH")) {
-        kakaoLink = kakaoLinks.writerH;
-      } else if (src.includes("writerW")) {
-        kakaoLink = kakaoLinks.writerW;  
-      }
+      if (src.includes("writerM")) kakaoLink = kakaoLinks.writerM;
+      else if (src.includes("writerB")) kakaoLink = kakaoLinks.writerB;
+      else if (src.includes("summer")) kakaoLink = kakaoLinks.summer;
+      else if (src.includes("landing")) kakaoLink = kakaoLinks.landing;
+      else if (src.includes("instagram")) kakaoLink = kakaoLinks.instagram;   
+      else if (src.includes("writerH")) kakaoLink = kakaoLinks.writerH;
+      else if (src.includes("writerW")) kakaoLink = kakaoLinks.writerW;  
 
       // GA 이벤트 전송
       gtag('event', 'kakao_redirect', {
@@ -56,10 +48,21 @@
         event_label: src
       });
 
+      // [추가된 기능] 슬랙으로 알림 전송 (비동기 처리)
+      // fetch는 페이지 이동(리디렉션)에 방해되지 않도록 설계됨
+      fetch(GOOGLE_SCRIPT_URL, {
+        method: "POST",
+        mode: "no-cors", // 중요: 구글 스크립트로 보낼 때 CORS 에러 방지
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ src: src }),
+      }).catch(err => console.log("Slack Alert Error:", err));
+
       // 1.5초 후 리디렉션
       setTimeout(() => {
         window.location.href = kakaoLink;
-      }, 1000);
+      }, 1500); // 1.0초는 슬랙 전송에 너무 빠를 수 있어 1.5초로 살짝 넉넉하게 잡는 것을 추천
     </script>
   </body>
 </html>
