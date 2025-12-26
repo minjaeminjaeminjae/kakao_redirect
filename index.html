@@ -18,7 +18,7 @@
       const params = new URLSearchParams(window.location.search);
       const src = params.get('src') || 'unknown';
 
-      // 구글 앱스 스크립트 주소 (네이버폼과 동일한 주소 사용)
+      // 구글 앱스 스크립트 주소 (보내주신 주소 유지)
       const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxT5fH5Ty-J_VRpQPx62zgqR-NYZFCrxn9c_ocah8ppTJa8EF5tFCj1fBv43Hl1NLa5uw/exec";
 
       // 오픈카톡 링크 매핑
@@ -34,6 +34,7 @@
 
       let kakaoLink = "https://open.kakao.com/o/defaultLink";
 
+      // src에 따라 링크 결정
       if (src.includes("writerM")) kakaoLink = kakaoLinks.writerM;
       else if (src.includes("writerB")) kakaoLink = kakaoLinks.writerB;
       else if (src.includes("summer")) kakaoLink = kakaoLinks.summer;
@@ -42,9 +43,31 @@
       else if (src.includes("writerH")) kakaoLink = kakaoLinks.writerH;
       else if (src.includes("writerW")) kakaoLink = kakaoLinks.writerW;  
 
-      // [핵심 추가] 봇/크롤러 감지 필터
-      const userAgent = navigator.userAgent.toLowerCase();
-      const isBot = /bot|crawler|spider|crawling|facebook|kakaotalk|twitter|slack|whatsapp|telegram|naver/.test(userAgent);
+      // -----------------------------------------------------------
+      // [업그레이드된 봇/크롤러 감지 필터]
+      // -----------------------------------------------------------
+      function checkIsBot() {
+        const ua = navigator.userAgent.toLowerCase();
+        
+        // 1. 봇 키워드 + headless(화면없는 브라우저) 감지
+        if (/bot|crawler|spider|crawling|facebook|kakaotalk|twitter|slack|whatsapp|telegram|naver|headless|lighthouse|google-inspectiontool/.test(ua)) {
+            return true;
+        }
+
+        // 2. [강력 차단] 자동화 도구(Selenium, Puppeteer) 감지
+        if (navigator.webdriver) {
+            return true;
+        }
+
+        // 3. 화면 크기가 0이거나 감지되지 않는 유령 브라우저 차단
+        if (!window.screen || window.screen.width === 0 || window.screen.height === 0) {
+            return true;
+        }
+
+        return false;
+      }
+
+      const isBot = checkIsBot();
 
       // GA 이벤트 전송
       gtag('event', 'kakao_redirect', {
@@ -54,19 +77,22 @@
 
       // [슬랙 전송] 봇이 아닐 때만(!isBot) 실행
       if (!isBot) {
-          fetch(GOOGLE_SCRIPT_URL, {
-            method: "POST",
-            mode: "no-cors", 
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ 
-                src: src,
-                type: 'kakao' // 구글 스크립트에서 카톡임을 인식하도록 설정
-            }),
-          }).catch(err => console.log("Slack Alert Error:", err));
+          // 0.5초 딜레이를 주어 순간 스캔 봇 회피
+          setTimeout(() => {
+            fetch(GOOGLE_SCRIPT_URL, {
+                method: "POST",
+                mode: "no-cors", 
+                headers: {
+                "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ 
+                    src: src,
+                    type: 'kakao' // 구글 스크립트에서 카톡임을 인식
+                }),
+            }).catch(err => console.log("Slack Alert Error:", err));
+          }, 500);
       } else {
-          console.log("Bot detected. Slack alert skipped.");
+          console.log("🚫 Bot detected. Slack alert skipped.");
       }
 
       // 3초 후 리디렉션
